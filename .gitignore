@@ -79,4 +79,18 @@ code/**/*.wcfg
 code/**/*.vcd
 code/**/*.isdb
 code/**/xilinxsim.ini
-code/**
+code/**/cmd_log
+
+# CoreGen / IP outputs
+# Keep the .xco (CoreGen configuration) files, ignore the rest.
+code/**/ipcore_dir/*
+!code/**/ipcore_dir/*.xco
+code/**/ipcore_dir/*.cgc
+
+# Project files (optional to ignore; remove if you want them in VCS)
+code/**/*.xise
+code/**/*.gise
+code/**/*.ise
+
+# Keep HDL and constraints (by not ignoring):
+#   *.v, *.sv, *.vh, *.ucf, *.xdc, *.tcl, *.xco
