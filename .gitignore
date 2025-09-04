@@ -91,6 +91,9 @@ code/**/ipcore_dir/*.cgc
 code/**/*.xise
 code/**/*.gise
 code/**/*.ise
+code/**/*.cmd
+code/**/*.prj
+code/**/*.exe
 
 # Keep HDL and constraints (by not ignoring):
 #   *.v, *.sv, *.vh, *.ucf, *.xdc, *.tcl, *.xco
