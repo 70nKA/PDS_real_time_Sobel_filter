@@ -1,0 +1,82 @@
+# Xilinx ISE 14.7 / Verilog (.gitignore placed at repo root)
+# All ISE-generated files/dirs are scoped under "code".
+# If your projects folder has a different name, replace "code" below.
+
+# OS / editors
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+*.tmp
+*.bak
+*.backup
+
+# ISE project metadata and messages
+code/**/iseconfig/
+code/**/_xmsgs/
+code/**/_xmsg/
+code/**/*.xmsgs
+code/**/*.lso
+code/**/*.xrpt
+code/**/*.srp
+code/**/*.log
+code/**/*.jou
+
+# Build / output artifacts
+code/**/*.bit
+code/**/*.bin
+code/**/*.mcs
+code/**/*.svf
+code/**/*.rbt
+code/**/*.bgn
+code/**/*.drc
+code/**/*.ncd
+code/**/*.ngc
+code/**/*.ngd
+code/**/*.ngr
+code/**/*.pcf
+code/**/*.ncf
+code/**/*.par
+code/**/*.xpi
+code/**/*.map
+code/**/*.mrp
+code/**/*.msd
+code/**/*.twr
+code/**/*.twx
+code/**/*.tcf
+code/**/*.sdf
+code/**/*.syr
+code/**/*.tps
+code/**/*.rpt
+code/**/*_summary.html
+
+# Reports / telemetry
+code/**/webtalk.log
+code/**/usage_statistics_webtalk.xml
+code/**/_impactbatch.log
+code/**/impact_*.log
+
+# Tool-generated directories
+code/**/xst/
+code/**/netgen/
+code/**/synthesis/
+code/**/implementation/
+code/**/translate/
+code/**/par/
+code/**/ngdbuild/
+code/**/smartxplorer_*/
+code/**/planAhead_*/
+code/**/.planAhead/
+code/**/xlnx_auto_0_xdb/
+
+# ISim (Xilinx simulator)
+code/**/isim/
+code/**/fuse.log
+code/**/fuseRelaunch.cmd
+code/**/*.wdb
+code/**/*.wcfg
+code/**/*.vcd
+code/**/*.isdb
+code/**/xilinxsim.ini
+code/**
