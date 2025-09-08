@@ -37,13 +37,10 @@ module line_buffer_controller_test;
     wire [0:8*9-1] sobel_pixels;
 
     // Instantiate the Unit Under Test (UUT)
-    line_buffer_controller
-	 #(
-		.LINEBUFFERCON_BYTE(LINEBUFFERCON_BYTE),
-		.LINEBUFFERCON_LINE_WIDTH(LINEBUFFERCON_LINE_WIDTH)
-	 )
-	 uut
-	 (
+    line_buffer_controller #(
+        .LINEBUFFERCON_BYTE(LINEBUFFERCON_BYTE),
+        .LINEBUFFERCON_LINE_WIDTH(LINEBUFFERCON_LINE_WIDTH)
+    ) uut (
         .clk(clk),
         .reset(reset),
         .data_in(data_in),
@@ -60,7 +57,7 @@ module line_buffer_controller_test;
         clk = 0;
         reset = 1;
         data_in = 0;
-        bram_byte_counter = LINEBUFFERCON_LINE_WIDTH; // Assume BRAM has enough data initially
+        bram_byte_counter = 2 * LINEBUFFERCON_LINE_WIDTH; // Ensure BRAM has enough data initially for test
 
         // Write test data to array
         for (i = 0; i < LINEBUFFERCON_LINE_WIDTH; i = i + 1) begin
@@ -70,20 +67,51 @@ module line_buffer_controller_test;
         // Reset the system initially
         #20 reset = 0;
 
+        // Initialization Phase
         // Load data into line_buffer_3
         for (i = 0; i < LINEBUFFERCON_LINE_WIDTH; i = i + 1) begin
             data_in = test_data[i];
             #20; // Wait for one clock cycle
         end
-		  bram_byte_counter = 0;
+		  
+		  data_in = 0;
+
+        // Simulate the first shift
+        #20;
+
+        // Load data into line_buffer_3 again
+        for (i = 0; i < LINEBUFFERCON_LINE_WIDTH; i = i + 1) begin
+            data_in = test_data[i] + 1;
+            #20; // Wait for one clock cycle
+        end
+		  
+		  data_in = 0;
+		  
+		  bram_byte_counter = 0; // if this line was not implemented there would be mistakes
+
+        // Simulate the second shift
+        #20;
 
         // Wait for some cycles to allow the buffers to shift and export Sobel kernels
         #1360; // Wait for 64 clock cycles
+		  
+		  bram_byte_counter = 64; // if this line was not implemented there would be mistakes
+		  
+		  // Normal Running Operation Phase
+		  // Load data into line_buffer_3
+        for (i = 0; i < LINEBUFFERCON_LINE_WIDTH; i = i + 1) begin
+            data_in = test_data[i] + 2;
+            #20; // Wait for one clock cycle
+        end
+
+        // Simulate shift
+        #20;
+		  
+		  // Wait for some cycles to allow the buffers to shift and export Sobel kernels
+        #1360; // Wait for 64 clock cycles
 
         // Display results
-        $display("sobel_pixels = %h", sobel_pixels);
-		  
-		  #40;
+        $display("Final sobel_pixels = %h", sobel_pixels);
 
         // Finish the test
         $finish;
@@ -98,6 +126,45 @@ module line_buffer_controller_test;
     initial begin
         $monitor("Time=%0t clk=%b reset=%b data_in=%h bram_byte_counter=%d sobel_pixels=%h",
                  $time, clk, reset, data_in, bram_byte_counter, sobel_pixels);
+    end
+
+    // Additional verification logic
+    initial begin
+        @(negedge reset); // Wait until reset is released
+        @(posedge clk); // Wait for the first clock cycle after reset
+
+        // Verify initial state after reset
+        if (sobel_pixels !== 'h0) begin
+            $display("ERROR: Initial sobel_pixels should be 0 after reset.");
+        end
+
+        // Verify after loading data during initialization
+        @(posedge clk);
+        @(posedge clk);
+        if (sobel_pixels !== 'h0) begin
+            $display("ERROR: sobel_pixels should be 0 after loading data during initialization.");
+        end
+
+        // Verify after shifting buffers during initialization
+        @(posedge clk);
+        @(posedge clk);
+        if (sobel_pixels !== 'h0) begin
+            $display("ERROR: sobel_pixels should be 0 after shifting buffers during initialization.");
+        end
+
+        // Verify after exporting Sobel kernels during initialization
+        @(posedge clk);
+        @(posedge clk);
+        if (sobel_pixels === 'h0) begin
+            $display("ERROR: sobel_pixels should not be 0 after exporting Sobel kernels during initialization.");
+        end
+
+        // Verify normal running operation
+        @(posedge clk);
+        @(posedge clk);
+        if (sobel_pixels !== 'h0) begin
+            $display("ERROR: sobel_pixels should be 0 after normal running operation.");
+        end
     end
 
 endmodule

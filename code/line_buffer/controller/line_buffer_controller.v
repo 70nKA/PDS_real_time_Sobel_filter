@@ -38,12 +38,12 @@ module line_buffer_controller
 
     // Instantiate the line_buffer_logic module
     line_buffer_logic 
-	 #(
-		.LINEBUFFERLOG_BYTE(LINEBUFFERCON_BYTE),
-		.LINEBUFFERLOG_LINE_WIDTH(LINEBUFFERCON_LINE_WIDTH)
-	 )
-	 mod_line_buffer_logic
-	 (
+    #(
+        .LINEBUFFERLOG_BYTE(LINEBUFFERCON_BYTE),
+        .LINEBUFFERLOG_LINE_WIDTH(LINEBUFFERCON_LINE_WIDTH)
+    )
+    mod_line_buffer_logic
+    (
         .clk(clk),
         .reset(reset),
         .load_line_buffer_3(load_line_buffer_3),
@@ -54,10 +54,14 @@ module line_buffer_controller
     );
 
     // States definition
-    parameter IDLE = 3'b000;
-    parameter LOAD_DATA = 3'b001;
-    parameter SHIFT_BUFFERS = 3'b010;
-    parameter EXPORT_KERNEL = 3'b011;
+    parameter INIT_WAIT = 3'b000;    // Wait for sufficient data in BRAM during init
+    parameter INIT_LOAD_DATA = 3'b001;    // Load data into line_buffer_3 during init
+    parameter INIT_SHIFT_BUFFERS = 3'b010; // Shift the line buffers during init
+    parameter INIT_EXPORT_KERNEL = 3'b011;  // Export Sobel kernels during init
+    parameter NORMAL_WAIT = 3'b100;    // Wait for sufficient data in BRAM during normal operation
+    parameter NORMAL_LOAD_DATA = 3'b101;    // Load data into line_buffer_3 during normal operation
+    parameter NORMAL_SHIFT_BUFFERS = 3'b110; // Shift the line buffers during normal operation
+    parameter NORMAL_EXPORT_KERNEL = 3'b111;  // Export Sobel kernels during normal operation
 
     // Local variables for state machine
     reg [2:0] state;
@@ -66,74 +70,123 @@ module line_buffer_controller
     reg [3:0] shift_counter;
 
     always @(posedge clk or posedge reset)
-		 begin
-			  if (reset)
-				  begin
-						state <= IDLE;
-						byte_counter <= 0;
-						pixel_counter <= 0;
-						shift_counter <= 0;
-						load_line_buffer_3 <= 0;
-						shift_line_buffer <= 0;
-						export_sobel_kernel <= 0;
-				  end
-			  else
-				  begin
-						case (state)
-							 IDLE:
-								 begin
-									  // Check if there are enough bytes in BRAM to fill line_buffer_3
-									  if (bram_byte_counter >= LINEBUFFERCON_LINE_WIDTH)
-										  begin
-												state <= LOAD_DATA;
-												load_line_buffer_3 <= 1;
-										  end
-								 end
+    begin
+        if (reset)
+        begin
+            state <= INIT_WAIT;
+            byte_counter <= 0;
+            pixel_counter <= 0;
+            shift_counter <= 0;
+            load_line_buffer_3 <= 0;
+            shift_line_buffer <= 0;
+            export_sobel_kernel <= 0;
+        end
+        else
+        begin
+            case (state)
+                INIT_WAIT:
+                begin
+                    // Wait until there are at least 2 * LINEBUFFERCON_LINE_WIDTH bytes in BRAM
+                    if (bram_byte_counter >= 2 * LINEBUFFERCON_LINE_WIDTH)
+                    begin
+                        state <= INIT_LOAD_DATA;
+                        load_line_buffer_3 <= 1;
+                    end
+                end
 
-							 LOAD_DATA:
-								 begin
-									  if (byte_counter == LINEBUFFERCON_LINE_WIDTH - 1)
-										  begin
-												byte_counter <= 0;
-												load_line_buffer_3 <= 0;
-												shift_line_buffer <= 1;
-												state <= SHIFT_BUFFERS;
-										  end
-									  else
-										  begin
-												byte_counter <= byte_counter + 1;
-										  end
-								 end
+                INIT_LOAD_DATA:
+                begin
+                    if (byte_counter == LINEBUFFERCON_LINE_WIDTH - 1)
+                    begin
+                        byte_counter <= 0;
+                        load_line_buffer_3 <= 0;
+                        shift_line_buffer <= 1;
+                        state <= INIT_SHIFT_BUFFERS;
+                    end
+                    else
+                    begin
+                        byte_counter <= byte_counter + 1;
+                    end
+                end
 
-							 SHIFT_BUFFERS:
-								 begin
-									  if (shift_counter == 3)
-										  begin
-												shift_counter <= 0;
-												shift_line_buffer <= 0;
-												export_sobel_kernel <= 1;
-												state <= EXPORT_KERNEL;
-										  end
-									  else
-										  begin
-												shift_counter <= shift_counter + 1;
-										  end
-								end
+                INIT_SHIFT_BUFFERS:
+                begin
+						  if (shift_counter == 1) // Perform one shift
+                    begin
+								shift_counter <= 0;
+                        shift_line_buffer <= 0;
+                        export_sobel_kernel <= 1;
+                        state <= INIT_EXPORT_KERNEL;
+                    end
+                    else begin
+                        shift_counter <= shift_counter + 1;
+                        shift_line_buffer <= 0;
+                        load_line_buffer_3 <= 1;
+                        state <= INIT_LOAD_DATA;;
+                    end
+                end
 
-							 EXPORT_KERNEL:
-								 begin
-									  if (pixel_counter == LINEBUFFERCON_LINE_WIDTH - 1)
-										  begin
-												pixel_counter <= 0;
-												export_sobel_kernel <= 0;
-												state <= IDLE;
-										  end
-									  else
-										  begin
-												pixel_counter <= pixel_counter + 1;
-										  end
-								end
-						endcase
-				  end
-		 end
+                INIT_EXPORT_KERNEL:
+                begin
+                    if (pixel_counter == LINEBUFFERCON_LINE_WIDTH - 1)
+                    begin
+                        pixel_counter <= 0;
+                        export_sobel_kernel <= 0;
+                        state <= NORMAL_WAIT;
+                    end
+                    else
+                    begin
+                        pixel_counter <= pixel_counter + 1;
+                    end
+                end
+
+                NORMAL_WAIT:
+                begin
+                    // Wait until there are at least LINEBUFFERCON_LINE_WIDTH bytes in BRAM
+                    if (bram_byte_counter >= LINEBUFFERCON_LINE_WIDTH)
+                    begin
+                        state <= NORMAL_LOAD_DATA;
+                        load_line_buffer_3 <= 1;
+                    end
+                end
+
+                NORMAL_LOAD_DATA:
+                begin
+                    if (byte_counter == LINEBUFFERCON_LINE_WIDTH - 1)
+                    begin
+                        byte_counter <= 0;
+                        load_line_buffer_3 <= 0;
+                        shift_line_buffer <= 1;
+                        state <= NORMAL_SHIFT_BUFFERS;
+                    end
+                    else
+                    begin
+                        byte_counter <= byte_counter + 1;
+                    end
+                end
+
+                NORMAL_SHIFT_BUFFERS:
+                begin
+						  shift_counter <= 0;
+						  shift_line_buffer <= 0;
+						  export_sobel_kernel <= 1;
+						  state <= NORMAL_EXPORT_KERNEL;
+                end
+
+                NORMAL_EXPORT_KERNEL:
+                begin
+                    if (pixel_counter == LINEBUFFERCON_LINE_WIDTH - 1)
+                    begin
+                        pixel_counter <= 0;
+                        export_sobel_kernel <= 0;
+                        state <= NORMAL_WAIT;
+                    end
+                    else
+                    begin
+                        pixel_counter <= pixel_counter + 1;
+                    end
+                end
+            endcase
+        end
+    end
 endmodule
